@@ -1,184 +1,56 @@
-import Ability from "./ability";
-import Bonus from "./bonus";
+import Parser from "./parser";
 import StatBlock from "./stat_block";
 
 const removeEmpty = (obj: any) => {
     Object.keys(obj).forEach(key => obj[key] === undefined && delete obj[key]);
 };
 
-const getName = (statBlockElement: Element) => {
-    return statBlockElement.getElementsByClassName("mon-stat-block__name-link")[0]?.textContent?.trim() || undefined;
-}
-
-const getTypeInfo = (statBlockElement: Element) => {
-    const typeInfoString = statBlockElement.getElementsByClassName("mon-stat-block__meta")[0]?.textContent?.trim() || undefined;
-    if (!typeInfoString) {
-        return {
-            size: undefined,
-            type: undefined,
-            subtype: undefined,
-            alignment: undefined,
-        };
-    }
-    const match = typeInfoString.match(/(?<size>[a-zA-Z]+)(?: (?<type>[a-zA-Z]+))?(?: \((?<subtype>.+)\))?(?:, (?<alignment>.+))?/);
-    if (!match?.groups) {
-        return {
-            size: undefined,
-            type: undefined,
-            subtype: undefined,
-            alignment: undefined,
-        };
-    }
-    return {
-        size: match.groups["size"],
-        type: match.groups["type"],
-        subtype: match.groups["subtype"],
-        alignment: match.groups["alignment"],
-    };
-}
-
-const getAttributeValue = (statBlockElement: Element, attributeName: string) => {
-    const label = [...statBlockElement.getElementsByClassName("mon-stat-block__attribute-label")].filter(x => x.textContent === attributeName)[0];
-    return label?.parentElement?.getElementsByClassName("mon-stat-block__attribute-data-value")[0]?.textContent?.trim() || undefined;
-}
-
-const getAttributeExtra = (statBlockElement: Element, attributeName: string) => {
-    const label = [...statBlockElement.getElementsByClassName("mon-stat-block__attribute-label")].filter(x => x.textContent === attributeName)[0];
-    return label?.parentElement?.getElementsByClassName("mon-stat-block__attribute-data-extra")[0]?.textContent?.trim() || undefined;
-}
-
-const getAbilityScore = (statBlockElement: Element, abilityAbbr: string) => {
-    const label = [...statBlockElement.getElementsByClassName("ability-block__heading")].filter(x => x.textContent === abilityAbbr)[0];
-    const scoreString = label?.parentElement?.getElementsByClassName("ability-block__score")[0]?.textContent?.trim()
-    return scoreString ? parseInt(scoreString) : undefined;
-}
-
-const getAbilityModifier = (statBlockElement: Element, abilityAbbr: string) => {
-    const label = [...statBlockElement.getElementsByClassName("ability-block__heading")].filter(x => x.textContent === abilityAbbr)[0];
-    return label?.parentElement?.getElementsByClassName("ability-block__modifier")[0]?.textContent?.trim() || undefined;
-}
-
-const getTidbit = (statBlockElement: Element, tidbitName: string) => {
-    const label = [...statBlockElement.getElementsByClassName("mon-stat-block__tidbit-label")].filter(x => x.textContent === tidbitName)[0];
-    return label?.parentElement?.getElementsByClassName("mon-stat-block__tidbit-data")[0]?.textContent?.trim() || undefined;
-}
-
-const getAbility = (element: Element): Ability => {
-    if (element.getElementsByTagName("strong").length > 0) {
-        const dividerIndex = element.textContent?.indexOf(".") ?? 0;
-        return {
-            name: element.textContent?.substring(0, dividerIndex) ?? null,
-            description: element.textContent?.substring(dividerIndex + 1).trim() ?? "",
-        }
-    } else {
-        return {
-            name: null,
-            description: element.textContent?.trim() ?? "",
-        };
-    }
-}
-
-const getAbilities = (statBlockElement: Element, descriptionBlockIndex: number) => {
-    const container = statBlockElement
-        .getElementsByClassName("mon-stat-block__description-block")[descriptionBlockIndex]
-        ?.getElementsByClassName("mon-stat-block__description-block-content")[0];
-
-    if (!container) return undefined;
-
-    let currentAbility: Ability | null = null;
-    const abilities: Ability[] = [];
-
-    const processAbility = (element: Element) => {
-        const newAbility = getAbility(element);
-        if (newAbility.name) {
-            if (currentAbility) {
-                abilities.push(currentAbility);
-            }
-            currentAbility = newAbility;
-        } else if (currentAbility != null) {
-            currentAbility.description += "\n" + newAbility.description;
-        } else {
-            currentAbility = newAbility;
-        }
-    }
-
-    for (const traitElement of container.children)
-    {
-        if (["ol", "ul"].includes(traitElement.tagName.toLowerCase())) {
-            for (const listElement of traitElement.children) {
-                processAbility(listElement);
-            }
-        } else {
-            processAbility(traitElement);
-        }
-    }
-
-    if (currentAbility != null) {
-        abilities.push(currentAbility);
-    }
-    return abilities;
-}
-
-const getTraits = (statBlockElement: Element) => getAbilities(statBlockElement, 0);
-const getActions = (statBlockElement: Element) => getAbilities(statBlockElement, 1);
-const getLegendaryActions = (statBlockElement: Element) => getAbilities(statBlockElement, 2);
-
-const parseBonuses = (bonusesString?: string): Bonus[] | undefined => {
-    if (!bonusesString) return undefined;
-    const bonuses = [];
-    for (const bonus of bonusesString.split(", "))
-    {
-        const parts = bonus.split(" ");
-        bonuses.push({ name: parts[0], modifier: parts[1] });
-    }
-    if (bonuses.length === 0) return undefined;
-    return bonuses;
-}
-
 const parseJsonFromStatBlock = (statBlockElement: Element) => {
-    const crString = getTidbit(statBlockElement, "Challenge");
+    const crString = Parser.parseTidbit(statBlockElement, "Challenge");
     const cr = crString?.slice(0, crString.indexOf(" ")) ?? "1/4";
     const crXp = crString?.slice(crString.indexOf(" ") + 1) ?? "25";
-    const typeInfo = getTypeInfo(statBlockElement);
+    const typeInfo = Parser.parseTypeInfo(statBlockElement);
     const statBlock: StatBlock = {
-        name: getName(statBlockElement),
+        name: Parser.parseName(statBlockElement),
         size: typeInfo.size,
         type: typeInfo.type,
         subtype: typeInfo.subtype,
         alignment: typeInfo.alignment,
-        hp: parseInt(getAttributeValue(statBlockElement, "Hit Points") ?? "0"),
-        hitDice: getAttributeExtra(statBlockElement, "Hit Points"),
-        ac: parseInt(getAttributeValue(statBlockElement, "Armor Class") ?? "10"),
-        acDescription: getAttributeExtra(statBlockElement, "Armor Class"),
-        speed: getAttributeValue(statBlockElement, "Speed"),
+        hp: parseInt(Parser.parseAttributeValue(statBlockElement, "Hit Points") ?? "0"),
+        hitDice: Parser.parseAttributeExtra(statBlockElement, "Hit Points"),
+        ac: parseInt(Parser.parseAttributeValue(statBlockElement, "Armor Class") ?? "10"),
+        acDescription: Parser.parseAttributeExtra(statBlockElement, "Armor Class"),
+        speed: Parser.parseAttributeValue(statBlockElement, "Speed"),
         abilityScores: {
-            strength: getAbilityScore(statBlockElement, "STR"),
-            strengthMod: getAbilityModifier(statBlockElement, "STR"),
-            dexterity: getAbilityScore(statBlockElement, "DEX"),
-            dexterityMod: getAbilityModifier(statBlockElement, "DEX"),
-            constitution: getAbilityScore(statBlockElement, "CON"),
-            constitutionMod: getAbilityModifier(statBlockElement, "CON"),
-            intelligence: getAbilityScore(statBlockElement, "INT"),
-            intelligenceMod: getAbilityModifier(statBlockElement, "INT"),
-            wisdom: getAbilityScore(statBlockElement, "WIS"),
-            wisdomMod: getAbilityModifier(statBlockElement, "WIS"),
-            charisma: getAbilityScore(statBlockElement, "CHA"),
-            charismaMod: getAbilityModifier(statBlockElement, "CHA"),
+            strength: Parser.parseAbilityScore(statBlockElement, "STR"),
+            strengthMod: Parser.parseAbilityModifier(statBlockElement, "STR"),
+            dexterity: Parser.parseAbilityScore(statBlockElement, "DEX"),
+            dexterityMod: Parser.parseAbilityModifier(statBlockElement, "DEX"),
+            constitution: Parser.parseAbilityScore(statBlockElement, "CON"),
+            constitutionMod: Parser.parseAbilityModifier(statBlockElement, "CON"),
+            intelligence: Parser.parseAbilityScore(statBlockElement, "INT"),
+            intelligenceMod: Parser.parseAbilityModifier(statBlockElement, "INT"),
+            wisdom: Parser.parseAbilityScore(statBlockElement, "WIS"),
+            wisdomMod: Parser.parseAbilityModifier(statBlockElement, "WIS"),
+            charisma: Parser.parseAbilityScore(statBlockElement, "CHA"),
+            charismaMod: Parser.parseAbilityModifier(statBlockElement, "CHA"),
         },
-        savingThrows: parseBonuses(getTidbit(statBlockElement, "Saving Throws")),
-        skills: parseBonuses(getTidbit(statBlockElement, "Skills")),
-        senses: getTidbit(statBlockElement, "Senses"),
-        languages: getTidbit(statBlockElement, "Languages"),
-        damageVulnerabilities: getTidbit(statBlockElement, "Damage Vulnerabilities"),
-        damageResistances: getTidbit(statBlockElement, "Damage Resistances"),
-        damageImmunities: getTidbit(statBlockElement, "Damage Immunities"),
-        conditionImmunities: getTidbit(statBlockElement, "Condition Immunities"),
+        savingThrows: Parser.parseBonuses(Parser.parseTidbit(statBlockElement, "Saving Throws")),
+        skills: Parser.parseBonuses(Parser.parseTidbit(statBlockElement, "Skills")),
+        senses: Parser.parseTidbit(statBlockElement, "Senses"),
+        languages: Parser.parseTidbit(statBlockElement, "Languages"),
+        damageVulnerabilities: Parser.parseTidbit(statBlockElement, "Damage Vulnerabilities"),
+        damageResistances: Parser.parseTidbit(statBlockElement, "Damage Resistances"),
+        damageImmunities: Parser.parseTidbit(statBlockElement, "Damage Immunities"),
+        conditionImmunities: Parser.parseTidbit(statBlockElement, "Condition Immunities"),
         cr: cr,
         crXp: crXp,
-        proficiencyBonus: getTidbit(statBlockElement, "Proficiency Bonus"),
-        traits: getTraits(statBlockElement),
-        actions: getActions(statBlockElement),
-        legendaryActions: getLegendaryActions(statBlockElement),
+        proficiencyBonus: Parser.parseTidbit(statBlockElement, "Proficiency Bonus"),
+        traits: Parser.parseAbilities(statBlockElement),
+        actions: Parser.parseAbilities(statBlockElement, "Actions"),
+        reactions: Parser.parseAbilities(statBlockElement, "Reactions"),
+        bonusActions: Parser.parseAbilities(statBlockElement, "Bonus Actions"),
+        legendaryActions: Parser.parseAbilities(statBlockElement, "Legendary Actions"),
     };
     removeEmpty(statBlock);
     return statBlock;
@@ -230,6 +102,22 @@ const buildYamlFromJson = (statBlock: StatBlock) => {
     if (statBlock.actions && statBlock.actions.length > 0) {
         yamlString += `actions:\n`;
         for (const action of statBlock.actions!) {
+            yamlString += `  - name: ${action.name}\n`
+            yamlString += `    desc: ${formatLongYamlString(action.description)}\n`
+        }
+    }
+
+    if (statBlock.reactions && statBlock.reactions.length > 0) {
+        yamlString += `reactions:\n`;
+        for (const action of statBlock.reactions!) {
+            yamlString += `  - name: ${action.name}\n`
+            yamlString += `    desc: ${formatLongYamlString(action.description)}\n`
+        }
+    }
+
+    if (statBlock.bonusActions && statBlock.bonusActions.length > 0) {
+        yamlString += `bonus_actions:\n`;
+        for (const action of statBlock.bonusActions!) {
             yamlString += `  - name: ${action.name}\n`
             yamlString += `    desc: ${formatLongYamlString(action.description)}\n`
         }

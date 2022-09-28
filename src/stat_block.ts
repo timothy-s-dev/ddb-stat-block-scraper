@@ -28,5 +28,7 @@ export default interface StatBlock
     proficiencyBonus?: string;
     traits?: Ability[];
     actions?: Ability[];
+    reactions?: Ability[];
+    bonusActions?: Ability[];
     legendaryActions?: Ability[];
 }
