@@ -8,6 +8,25 @@ const getName = (statBlockElement) => {
     return statBlockElement.getElementsByClassName("mon-stat-block__name-link")[0]?.textContent.trim() || undefined;
 }
 
+const getTypeInfo = (statBlockElement) => {
+    const typeInfoString = statBlockElement.getElementsByClassName("mon-stat-block__meta")[0]?.textContent.trim() || undefined;
+    if (!typeInfoString) {
+        return {
+            size: undefined,
+            type: undefined,
+            subtype: undefined,
+            alignment: undefined,
+        };
+    }
+    const match = typeInfoString.match(/(?<size>[a-zA-Z]+)(?: (?<type>[a-zA-Z]+))?(?: \((?<subtype>.+)\))?(?:, (?<alignment>.+))?/);
+    return {
+        size: match.groups["size"],
+        type: match.groups["type"],
+        subtype: match.groups["subtype"],
+        alignment: match.groups["alignment"],
+    };
+}
+
 const getAttributeValue = (statBlockElement, attributeName) => {
     const label = [...statBlockElement.getElementsByClassName("mon-stat-block__attribute-label")].filter(x => x.textContent === attributeName)[0];
     return label?.parentElement.getElementsByClassName("mon-stat-block__attribute-data-value")[0]?.textContent.trim() || undefined;
@@ -114,8 +133,13 @@ const parseJsonFromStatBlock = (statBlockElement) => {
     const crString = getTidbit(statBlockElement, "Challenge");
     const cr = crString.slice(0, crString.indexOf(" "));
     const crXp = crString.slice(crString.indexOf(" ") + 1);
+    const typeInfo = getTypeInfo(statBlockElement);
     const statBlock = {
         name: getName(statBlockElement),
+        size: typeInfo.size,
+        type: typeInfo.type,
+        subtype: typeInfo.subtype,
+        alignment: typeInfo.alignment,
         hp: parseInt(getAttributeValue(statBlockElement, "Hit Points")),
         hitDice: getAttributeExtra(statBlockElement, "Hit Points"),
         ac: parseInt(getAttributeValue(statBlockElement, "Armor Class")),
@@ -159,8 +183,12 @@ const formatLongYamlString = (str) => `"${str.replace(/(\r\n|\r|\n)/g, "\\n")}"`
 const buildYamlFromJson = (statBlock) => {
     let yamlString = "";
     if (statBlock.name) yamlString += `name: ${statBlock.name}\n`;
+    if (statBlock.size) yamlString += `size: ${statBlock.size}\n`;
+    if (statBlock.type) yamlString += `type: ${statBlock.type}\n`;
+    if (statBlock.subtype) yamlString += `subtype: ${statBlock.subtype}\n`;
+    if (statBlock.alignment) yamlString += `alignment: ${statBlock.alignment}\n`;
     if (statBlock.hp) yamlString += `hp: ${statBlock.hp}\n`;
-    if (statBlock.hitDice) yamlString += `hit_dice: ${statBlock.hitDice.slice(1, statBlock.hitDice.length - 2)}\n`;
+    if (statBlock.hitDice) yamlString += `hit_dice: ${statBlock.hitDice.slice(1, statBlock.hitDice.length - 1)}\n`;
     if (statBlock.ac) yamlString += `ac: ${statBlock.ac}\n`;
     if (statBlock.acDescription) yamlString += `ac_description: ${statBlock.acDescription}\n`;
     if (statBlock.speed) yamlString += `speed: ${statBlock.speed}\n`;
