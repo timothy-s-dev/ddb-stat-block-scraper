@@ -1,15 +1,17 @@
-const statBlockClassName = "mon-stat-block";
+import Ability from "./ability";
+import Bonus from "./bonus";
+import StatBlock from "./stat_block";
 
-const removeEmpty = (obj) => {
+const removeEmpty = (obj: any) => {
     Object.keys(obj).forEach(key => obj[key] === undefined && delete obj[key]);
 };
 
-const getName = (statBlockElement) => {
-    return statBlockElement.getElementsByClassName("mon-stat-block__name-link")[0]?.textContent.trim() || undefined;
+const getName = (statBlockElement: Element) => {
+    return statBlockElement.getElementsByClassName("mon-stat-block__name-link")[0]?.textContent?.trim() || undefined;
 }
 
-const getTypeInfo = (statBlockElement) => {
-    const typeInfoString = statBlockElement.getElementsByClassName("mon-stat-block__meta")[0]?.textContent.trim() || undefined;
+const getTypeInfo = (statBlockElement: Element) => {
+    const typeInfoString = statBlockElement.getElementsByClassName("mon-stat-block__meta")[0]?.textContent?.trim() || undefined;
     if (!typeInfoString) {
         return {
             size: undefined,
@@ -19,6 +21,14 @@ const getTypeInfo = (statBlockElement) => {
         };
     }
     const match = typeInfoString.match(/(?<size>[a-zA-Z]+)(?: (?<type>[a-zA-Z]+))?(?: \((?<subtype>.+)\))?(?:, (?<alignment>.+))?/);
+    if (!match?.groups) {
+        return {
+            size: undefined,
+            type: undefined,
+            subtype: undefined,
+            alignment: undefined,
+        };
+    }
     return {
         size: match.groups["size"],
         type: match.groups["type"],
@@ -27,62 +37,58 @@ const getTypeInfo = (statBlockElement) => {
     };
 }
 
-const getAttributeValue = (statBlockElement, attributeName) => {
+const getAttributeValue = (statBlockElement: Element, attributeName: string) => {
     const label = [...statBlockElement.getElementsByClassName("mon-stat-block__attribute-label")].filter(x => x.textContent === attributeName)[0];
-    return label?.parentElement.getElementsByClassName("mon-stat-block__attribute-data-value")[0]?.textContent.trim() || undefined;
+    return label?.parentElement?.getElementsByClassName("mon-stat-block__attribute-data-value")[0]?.textContent?.trim() || undefined;
 }
 
-const getAttributeExtra = (statBlockElement, attributeName) => {
+const getAttributeExtra = (statBlockElement: Element, attributeName: string) => {
     const label = [...statBlockElement.getElementsByClassName("mon-stat-block__attribute-label")].filter(x => x.textContent === attributeName)[0];
-    return label?.parentElement.getElementsByClassName("mon-stat-block__attribute-data-extra")[0]?.textContent.trim() || undefined;
+    return label?.parentElement?.getElementsByClassName("mon-stat-block__attribute-data-extra")[0]?.textContent?.trim() || undefined;
 }
 
-const getAbilityScore = (statBlockElement, abilityAbbr) => {
+const getAbilityScore = (statBlockElement: Element, abilityAbbr: string) => {
     const label = [...statBlockElement.getElementsByClassName("ability-block__heading")].filter(x => x.textContent === abilityAbbr)[0];
-    const scoreString = label?.parentElement.getElementsByClassName("ability-block__score")[0]?.textContent.trim()
+    const scoreString = label?.parentElement?.getElementsByClassName("ability-block__score")[0]?.textContent?.trim()
     return scoreString ? parseInt(scoreString) : undefined;
 }
 
-const getAbilityModifier = (statBlockElement, abilityAbbr) => {
+const getAbilityModifier = (statBlockElement: Element, abilityAbbr: string) => {
     const label = [...statBlockElement.getElementsByClassName("ability-block__heading")].filter(x => x.textContent === abilityAbbr)[0];
-    return label?.parentElement.getElementsByClassName("ability-block__modifier")[0]?.textContent.trim() || undefined;
+    return label?.parentElement?.getElementsByClassName("ability-block__modifier")[0]?.textContent?.trim() || undefined;
 }
 
-const getTidbit = (statBlockElement, tidbitName) => {
+const getTidbit = (statBlockElement: Element, tidbitName: string) => {
     const label = [...statBlockElement.getElementsByClassName("mon-stat-block__tidbit-label")].filter(x => x.textContent === tidbitName)[0];
-    return label?.parentElement.getElementsByClassName("mon-stat-block__tidbit-data")[0]?.textContent.trim() || undefined;
+    return label?.parentElement?.getElementsByClassName("mon-stat-block__tidbit-data")[0]?.textContent?.trim() || undefined;
 }
 
-const hasStrongChild = (element) => {
-    return element.getElementsByTag("strong").length > 0;
-}
-
-const getAbility = (element) => {
+const getAbility = (element: Element): Ability => {
     if (element.getElementsByTagName("strong").length > 0) {
-        const dividerIndex = element.textContent.indexOf(".");
+        const dividerIndex = element.textContent?.indexOf(".") ?? 0;
         return {
-            name: element.textContent.substring(0, dividerIndex),
-            description: element.textContent.substring(dividerIndex + 1).trim(),
+            name: element.textContent?.substring(0, dividerIndex) ?? null,
+            description: element.textContent?.substring(dividerIndex + 1).trim() ?? "",
         }
     } else {
         return {
             name: null,
-            description: element.textContent.trim(),
+            description: element.textContent?.trim() ?? "",
         };
     }
 }
 
-const getAbilities = (statBlockElement, descriptionBlockIndex) => {
+const getAbilities = (statBlockElement: Element, descriptionBlockIndex: number) => {
     const container = statBlockElement
         .getElementsByClassName("mon-stat-block__description-block")[descriptionBlockIndex]
         ?.getElementsByClassName("mon-stat-block__description-block-content")[0];
 
     if (!container) return undefined;
 
-    let currentAbility = null;
-    const abilities = [];
+    let currentAbility: Ability | null = null;
+    const abilities: Ability[] = [];
 
-    const processAbility = (element) => {
+    const processAbility = (element: Element) => {
         const newAbility = getAbility(element);
         if (newAbility.name) {
             if (currentAbility) {
@@ -113,11 +119,11 @@ const getAbilities = (statBlockElement, descriptionBlockIndex) => {
     return abilities;
 }
 
-const getTraits = (statBlockElement) => getAbilities(statBlockElement, 0);
-const getActions = (statBlockElement) => getAbilities(statBlockElement, 1);
-const getLegendaryActions = (statBlockElement) => getAbilities(statBlockElement, 2);
+const getTraits = (statBlockElement: Element) => getAbilities(statBlockElement, 0);
+const getActions = (statBlockElement: Element) => getAbilities(statBlockElement, 1);
+const getLegendaryActions = (statBlockElement: Element) => getAbilities(statBlockElement, 2);
 
-const parseBonuses = (bonusesString) => {
+const parseBonuses = (bonusesString?: string): Bonus[] | undefined => {
     if (!bonusesString) return undefined;
     const bonuses = [];
     for (const bonus of bonusesString.split(", "))
@@ -129,20 +135,20 @@ const parseBonuses = (bonusesString) => {
     return bonuses;
 }
 
-const parseJsonFromStatBlock = (statBlockElement) => {
+const parseJsonFromStatBlock = (statBlockElement: Element) => {
     const crString = getTidbit(statBlockElement, "Challenge");
-    const cr = crString.slice(0, crString.indexOf(" "));
-    const crXp = crString.slice(crString.indexOf(" ") + 1);
+    const cr = crString?.slice(0, crString.indexOf(" ")) ?? "1/4";
+    const crXp = crString?.slice(crString.indexOf(" ") + 1) ?? "25";
     const typeInfo = getTypeInfo(statBlockElement);
-    const statBlock = {
+    const statBlock: StatBlock = {
         name: getName(statBlockElement),
         size: typeInfo.size,
         type: typeInfo.type,
         subtype: typeInfo.subtype,
         alignment: typeInfo.alignment,
-        hp: parseInt(getAttributeValue(statBlockElement, "Hit Points")),
+        hp: parseInt(getAttributeValue(statBlockElement, "Hit Points") ?? "0"),
         hitDice: getAttributeExtra(statBlockElement, "Hit Points"),
-        ac: parseInt(getAttributeValue(statBlockElement, "Armor Class")),
+        ac: parseInt(getAttributeValue(statBlockElement, "Armor Class") ?? "10"),
         acDescription: getAttributeExtra(statBlockElement, "Armor Class"),
         speed: getAttributeValue(statBlockElement, "Speed"),
         abilityScores: {
@@ -178,9 +184,9 @@ const parseJsonFromStatBlock = (statBlockElement) => {
     return statBlock;
 }
 
-const formatLongYamlString = (str) => `"${str.replace(/(\r\n|\r|\n)/g, "\\n")}"`;
+const formatLongYamlString = (str: string) => `"${str.replace(/(\r\n|\r|\n)/g, "\\n")}"`;
 
-const buildYamlFromJson = (statBlock) => {
+const buildYamlFromJson = (statBlock: StatBlock) => {
     let yamlString = "";
     if (statBlock.name) yamlString += `name: ${statBlock.name}\n`;
     if (statBlock.size) yamlString += `size: ${statBlock.size}\n`;
@@ -193,13 +199,13 @@ const buildYamlFromJson = (statBlock) => {
     if (statBlock.acDescription) yamlString += `ac_description: ${statBlock.acDescription}\n`;
     if (statBlock.speed) yamlString += `speed: ${statBlock.speed}\n`;
     if (statBlock.abilityScores) yamlString += `stats: [${statBlock.abilityScores.strength}, ${statBlock.abilityScores.dexterity}, ${statBlock.abilityScores.constitution}, ${statBlock.abilityScores.intelligence}, ${statBlock.abilityScores.wisdom}, ${statBlock.abilityScores.charisma}]\n`;
-    if ((statBlock.savingThrows?.length || 0) > 0) {
+    if (statBlock.savingThrows && statBlock.savingThrows.length > 0) {
         yamlString += `saves:\n`;
         for (const save of statBlock.savingThrows) {
             yamlString += `  - ${save.name}: ${save.modifier}\n`;
         }
     }
-    if ((statBlock.skills?.length || 0) > 0) {
+    if (statBlock.skills && statBlock.skills.length > 0) {
         yamlString += `skillsaves:\n`;
         for (const skill of statBlock.skills) {
             yamlString += `  - ${skill.name}: ${skill.modifier}\n`;
@@ -213,25 +219,25 @@ const buildYamlFromJson = (statBlock) => {
     if (statBlock.conditionImmunities) yamlString += `condition_immunities: ${statBlock.conditionImmunities}\n`;
     if (statBlock.cr) yamlString += `cr: ${statBlock.cr}\n`;
 
-    if ((statBlock.traits?.length || 0) > 0) {
+    if (statBlock.traits && statBlock.traits.length > 0) {
         yamlString += `traits:\n`;
-        for (const trait of statBlock.traits) {
+        for (const trait of statBlock.traits!) {
             yamlString += `  - name: ${trait.name}\n`
             yamlString += `    desc: ${formatLongYamlString(trait.description)}\n`
         }
     }
 
-    if ((statBlock.actions?.length || 0) > 0) {
+    if (statBlock.actions && statBlock.actions.length > 0) {
         yamlString += `actions:\n`;
-        for (const action of statBlock.actions) {
+        for (const action of statBlock.actions!) {
             yamlString += `  - name: ${action.name}\n`
             yamlString += `    desc: ${formatLongYamlString(action.description)}\n`
         }
     }
 
-    if ((statBlock.legendaryActions?.length || 0) > 0) {
+    if (statBlock.legendaryActions && statBlock.legendaryActions.length > 0) {
         yamlString += `legendary_actions:\n`;
-        for (const action of statBlock.legendaryActions) {
+        for (const action of statBlock.legendaryActions!) {
             yamlString += `  - name: ${action.name}\n`
             yamlString += `    desc: ${formatLongYamlString(action.description)}\n`
         }
@@ -240,7 +246,7 @@ const buildYamlFromJson = (statBlock) => {
     return yamlString;
 }
 
-const addButtonToStatBlock = (statBlockElement) =>
+const addButtonToStatBlock = (statBlockElement: Element) =>
 {
     const yamlButton = document.createElement("button");
     yamlButton.textContent = "Copy YAML";
@@ -249,7 +255,7 @@ const addButtonToStatBlock = (statBlockElement) =>
         const yaml = buildYamlFromJson(json);
         navigator.clipboard.writeText(yaml);
     }
-    statBlockElement.parentElement.insertBefore(yamlButton, statBlockElement.nextSibling)
+    statBlockElement.parentElement!.insertBefore(yamlButton, statBlockElement.nextSibling)
 
     const jsonButton = document.createElement("button");
     jsonButton.textContent = "Copy JSON";
@@ -258,18 +264,21 @@ const addButtonToStatBlock = (statBlockElement) =>
         console.log(json);
         navigator.clipboard.writeText(JSON.stringify(json));
     }
-    statBlockElement.parentElement.insertBefore(jsonButton, statBlockElement.nextSibling)
+    statBlockElement.parentElement!.insertBefore(jsonButton, statBlockElement.nextSibling)
 }
 
+const statBlockClassName = "mon-stat-block";
+
 const observer = new MutationObserver(mutations => {
-    const statBlockElements = [];
+    const statBlockElements: Element[] = [];
     for (const mutation of mutations) {
         for (const addedNode of mutation.addedNodes) {
-            if (!addedNode.tagName) continue; // not a DOM element
-            if (addedNode.classList.contains(statBlockClassName)) {
-                statBlockElements.push(addedNode);
-            } else if (addedNode.firstElementChild) {
-                statBlockElements.push(...addedNode.getElementsByClassName(statBlockClassName));
+            if (addedNode.nodeType !== Node.ELEMENT_NODE) continue; // not a DOM element
+            const element = addedNode as Element;
+            if (element.classList.contains(statBlockClassName)) {
+                statBlockElements.push(element);
+            } else if (element.firstElementChild) {
+                statBlockElements.push(...element.getElementsByClassName(statBlockClassName));
             }
         }
     }

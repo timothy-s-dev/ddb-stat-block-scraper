@@ -1,0 +1,14 @@
+{
+    "name": "DDB Stat Block Scraper",
+    "description": "Pull stat block data from D&D Beyond",
+    "version": "1.0",
+    "manifest_version": 3,
+    "permissions": ["activeTab", "scripting"],
+    "content_scripts": [
+        {
+            "matches": ["https://www.dndbeyond.com/*"],
+            "css": ["styles.css"],
+            "js": ["main.js"]
+        }
+    ]
+}
